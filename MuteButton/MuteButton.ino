@@ -6,6 +6,8 @@
 #define BUTTON_PIN (2)
 #define BUTTON_DEBOUNCE_DELAY (50)
 
+#define KEY_OE 0xBB
+
 /* Types */
 enum LedState {
   LED_ON,
@@ -138,6 +140,6 @@ static void handleButton() {
 static void mute(bool activate) {
   l.muted = activate;
 
-  // Send MOD+M
-  DigiKeyboard.sendKeyStroke(KEY_M, MOD_GUI_LEFT);
+  // Send CTRL+MOD+M
+  DigiKeyboard.sendKeyStroke(KEY_M, MOD_GUI_LEFT | MOD_CONTROL_LEFT);
 }
