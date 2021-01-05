@@ -1,26 +1,5 @@
-/*
-  Blink
-
-  Turns an LED on for one second, then off for one second, repeatedly.
-
-  Most Arduinos have an on-board LED you can control. On the UNO, MEGA and ZERO
-  it is attached to digital pin 13, on MKR1000 on pin 6. LED_BUILTIN is set to
-  the correct LED pin independent of which board is used.
-  If you want to know what pin the on-board LED is connected to on your Arduino
-  model, check the Technical Specs of your board at:
-  https://www.arduino.cc/en/Main/Products
-
-  modified 8 May 2014
-  by Scott Fitzgerald
-  modified 2 Sep 2016
-  by Arturo Guadalupi
-  modified 8 Sep 2016
-  by Colby Newman
-
-  This example code is in the public domain.
-
-  http://www.arduino.cc/en/Tutorial/Blink
-*/
+/* Includes */
+#include "DigiKeyboard.h"
 
 /* Defines */
 #define LED_PIN (0)
@@ -42,12 +21,15 @@ enum ButtonState {
 };
 
 struct locals {
+  bool muted;
+  
   LedState ledState;
   ButtonState buttonState;
-  
-  unsigned long lastToggle;
-  
-  int lastButtonState;
+  ButtonState lastButtonState;
+
+  unsigned long lastLedToggle;
+
+  int lastButtonReading;
   unsigned long lastDebounceTime;
 };
 
@@ -56,30 +38,27 @@ static struct locals l;
 
 /* Prototypes */
 static void handleLed();
+static void debounceButton();
 static void handleButton();
 
 /* Implementations */
 void setup() {
   l.ledState = LED_OFF;
-  l.buttonState = BUTTON_RELEASED;
-  l.lastButtonState = LOW;
-  
+  l.buttonState = l.lastButtonState = BUTTON_RELEASED;
+  l.lastButtonReading = LOW;
+
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  // this is generally not necessary but with some older systems it seems to
+  // prevent missing the first character after a delay:
+  DigiKeyboard.sendKeyStroke(0);
 }
 
 void loop() {
   handleLed();
+  debounceButton();
   handleButton();
-  
-  if(l.buttonState == BUTTON_PRESSED)
-  {
-    l.ledState = LED_TOGGLE_SLOW;
-  }
-  else if (l.buttonState == BUTTON_RELEASED)
-  {
-    l.ledState = LED_TOGGLE_FAST;
-  }
 }
 
 static void handleLed() {
@@ -93,31 +72,72 @@ static void handleLed() {
       break;
     case LED_TOGGLE_SLOW:
     case LED_TOGGLE_FAST:
-      if ((millis() - l.lastToggle) > l.ledState) {
+      if ((millis() - l.lastLedToggle) > l.ledState) {
         digitalWrite(LED_PIN, !digitalRead(LED_PIN));
-        l.lastToggle = millis();
+        l.lastLedToggle = millis();
       }
       break;
   }
 }
 
-static void handleButton() {
+static void debounceButton() {
   int reading = digitalRead(BUTTON_PIN);
 
-  if (reading != l.lastButtonState)
+  if (reading != l.lastButtonReading)
   {
     // reset the debouncing timer
     l.lastDebounceTime = millis();
   }
 
   if ((millis() - l.lastDebounceTime) > BUTTON_DEBOUNCE_DELAY) {
-    if(reading == LOW) {
+    if (reading == LOW) {
       l.buttonState = BUTTON_PRESSED;
-    } else  if(reading == HIGH) {
+      if ((millis() - l.lastDebounceTime) > BUTTON_LONG_PRESSED) {
+        l.buttonState = BUTTON_LONG_PRESSED;
+      }
+    } else  if (reading == HIGH) {
       l.buttonState = BUTTON_RELEASED;
     }
   }
 
-    // save the reading. Next time through the loop, it'll be the lastButtonState:
-  l.lastButtonState = reading;
+  // save the reading. Next time through the loop, it'll be the lastButtonReading:
+  l.lastButtonReading = reading;
+}
+
+static void handleButton() {
+  if(l.buttonState != l.lastButtonState)
+  {
+    if (l.buttonState == BUTTON_PRESSED)
+    {
+      // toggle mute state
+      mute(!l.muted);
+      l.ledState = l.muted ? LED_ON : LED_OFF;
+    }
+    else if (l.buttonState == BUTTON_LONG_PRESSED)
+    {
+      if(!l.muted)
+      {
+        // push-to-talk detected  
+        l.ledState = LED_TOGGLE_FAST;
+      }
+    }
+    else if (l.buttonState == BUTTON_RELEASED)
+    {
+      if(l.lastButtonState == BUTTON_LONG_PRESSED && !l.muted)
+      {
+        // finished push-to-talk
+        mute(true);
+        l.ledState = LED_ON;
+      }
+    }
+
+    l.lastButtonState = l.buttonState;
+  }
+}
+
+static void mute(bool activate) {
+  l.muted = activate;
+
+  // Send MOD+M
+  DigiKeyboard.sendKeyStroke(KEY_M, MOD_GUI_LEFT);
 }
