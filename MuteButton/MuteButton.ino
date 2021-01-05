@@ -4,7 +4,7 @@
 /* Defines */
 #define LED_PIN (0)
 #define BUTTON_PIN (2)
-#define BUTTON_DEBOUNCE_DELAY (100)
+#define BUTTON_DEBOUNCE_DELAY (50)
 
 /* Types */
 enum LedState {
