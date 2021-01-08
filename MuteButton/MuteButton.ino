@@ -18,7 +18,7 @@ enum LedState {
 
 enum ButtonState {
   BUTTON_PRESSED,
-  BUTTON_LONG_PRESSED = 2000,
+  BUTTON_LONG_PRESSED = 500,
   BUTTON_RELEASED
 };
 
