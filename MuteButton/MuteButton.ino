@@ -137,9 +137,9 @@ static void handleButton() {
   }
 }
 
+
 static void mute(bool activate) {
   l.muted = activate;
 
-  // Send CTRL+MOD+M
-  DigiKeyboard.sendKeyStroke(KEY_M, MOD_GUI_LEFT | MOD_CONTROL_LEFT);
+  DigiKeyboard.sendKeyStroke(KEY_F12, MOD_CONTROL_LEFT);
 }
